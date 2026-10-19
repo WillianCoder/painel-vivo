@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel Vivo</title>
+<style>
+:root{--bg:#0d1410;--card:#15201a;--card2:#1c2a22;--line:#2a3d31;--txt:#e7f1ea;--mut:#8fa898;--acc:#5fd38d;--doing:#f2c14e;--todo:#6aa9ff;--done:#5fd38d;--idea:#c58cff}
+:root[data-theme="light"]{--bg:#f3f7f2;--card:#fff;--card2:#eef4ee;--line:#d6e3d8;--txt:#14241a;--mut:#5d7365;--acc:#1f9d55;--doing:#c98a00;--todo:#2a6fd6;--done:#1f9d55;--idea:#8a4fd1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+h1{margin:0;font-size:22px}h1 span{color:var(--acc)}
+.sub{color:var(--mut);font-size:13px}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+button,.btn{background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;font:inherit;font-size:14px}
+button.on{background:var(--acc);color:#04120a;border-color:var(--acc);font-weight:600}
+main{padding:20px;max-width:1300px;margin:0 auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.stat b{font-size:28px;display:block}.stat small{color:var(--mut)}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+input,select,textarea{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit}
+#q{flex:1;min-width:200px}
+.view{display:none}.view.on{display:block}
+/* árvore */
+#tree{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:auto}
+#tree svg{display:block;min-width:900px}
+.node rect{rx:10;fill:var(--card2);stroke:var(--line)}
+.node text{fill:var(--txt);font-size:13px}
+.node{cursor:pointer}.node:hover rect{stroke:var(--acc)}
+.branch{fill:none;stroke-width:2.5;opacity:.7}
+/* kanban */
+.kanban{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.col{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;min-height:120px}
+.col h3{margin:2px 4px 10px;font-size:15px;display:flex;justify-content:space-between}
+.item{background:var(--card2);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;padding:10px 12px;margin-bottom:10px;cursor:pointer}
+.item:hover{border-color:var(--acc)}
+.item .t{font-weight:600}.item .d{color:var(--mut);font-size:13px;margin-top:3px}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bg);color:var(--mut);border:1px solid var(--line)}
+.links a{color:var(--acc);font-size:13px;margin-right:10px;text-decoration:none}
+/* links */
+.lgroup{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.lgroup h3{margin:0 0 8px;font-size:15px}
+.lrow{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.lrow a{color:var(--acc);word-break:break-all}
+/* modal */
+dialog{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:16px;width:min(560px,94vw)}
+dialog::backdrop{background:#0008}
+dialog form{display:grid;gap:10px}
+dialog label{font-size:13px;color:var(--mut);display:grid;gap:4px}
+.row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.danger{color:#ff7b7b}
+@media(max-width:600px){header,main{padding:14px 16px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>🌳 Painel <span>Vivo</span></h1><div class="sub">Tudo que você fez, está fazendo e ainda vai fazer — num só lugar</div></div>
+  <nav>
+    <button data-v="tree" class="on">🌳 Árvore</button>
+    <button data-v="kanban">📋 Quadro</button>
+    <button data-v="links">🔗 Links</button>
+    <button id="add">＋ Novo</button>
+    <button id="theme" title="Tema">🌓</button>
+  </nav>
+</header>
+<main>
+  <div class="stats" id="stats"></div>
+  <div class="bar">
+    <input id="q" placeholder="🔎 Buscar projeto, demanda, link, tag…">
+    <select id="fArea"><option value="">Todas as áreas</option></select>
+    <button id="exp">⬇ Backup</button>
+    <label class="btn">⬆ Restaurar<input type="file" id="imp" accept=".json" hidden></label>
+  </div>
+  <section class="view on" id="v-tree"><div id="tree"></div><p class="sub">Clique em qualquer folha para editar. Cor do galho = status.</p></section>
+  <section class="view" id="v-kanban"><div class="kanban" id="kanban"></div></section>
+  <section class="view" id="v-links"><div id="linkList"></div></section>
+</main>
+
+<dialog id="dlg"><form method="dialog" id="frm">
+  <h3 id="dlgT" style="margin:0">Item</h3>
+  <label>Título<input name="title" required></label>
+  <label>Descrição<textarea name="desc" rows="2"></textarea></label>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <label>Área (galho)<input name="area" list="areas" required></label>
+    <label>Status<select name="status">
+      <option value="idea">💡 Ideia</option><option value="todo">📌 Demanda</option>
+      <option value="doing">⚙️ Fazendo</option><option value="done">✅ Feito</option></select></label>
+  </div>
+  <label>Links (um por linha: Nome | URL)<textarea name="links" rows="3"></textarea></label>
+  <label>Tags (separadas por vírgula)<input name="tags"></label>
+  <div class="row"><button type="button" id="del" class="danger">Excluir</button><button value="cancel" formnovalidate>Cancelar</button><button id="save" value="ok" class="on">Salvar</button></div>
+</form><datalist id="areas"></datalist></dialog>
+
+<script>
+const ST={idea:{n:'💡 Ideias',c:'--idea'},todo:{n:'📌 Demandas',c:'--todo'},doing:{n:'⚙️ Fazendo',c:'--doing'},done:{n:'✅ Feito',c:'--done'}};
+const GH='https://github.com/WillianCoder/', PG='https://williancoder.github.io/';
+const SEED=[
+ {title:'Árvore Viva',area:'Sites & Apps',status:'doing',desc:'Projeto da árvore viva — inspiração deste painel.',tags:['javascript'],links:[['Repositório',GH+'arvore-viva']]},
+ {title:'Arte Militar 011',area:'Sites & Apps',status:'done',desc:'Site publicado no GitHub Pages.',tags:['javascript','site'],links:[['Site',PG+'arte-militar-011/'],['Repositório',GH+'arte-militar-011']]},
+ {title:'PM Alerta Audiências',area:'Trabalho / PM',status:'done',desc:'Alertas de audiências.',tags:['javascript','automação'],links:[['Site',PG+'pm-alerta-audiencias/'],['Repositório',GH+'pm-alerta-audiencias']]},
+ {title:'Quadros 2026',area:'Trabalho / PM',status:'done',desc:'Quadros/escalas de 2026.',tags:['javascript'],links:[['Site',PG+'Quadros2026/'],['Repositório',GH+'Quadros2026']]},
+ {title:'Site Presentes Datas Especiais',area:'Sites & Apps',status:'doing',desc:'Ainda sem GitHub Pages ativo.',tags:['javascript','site'],links:[['Repositório',GH+'site-presentes-datas-especiais']]},
+ {title:'WillCoder01',area:'Sites & Apps',status:'done',desc:'Primeiro projeto em TypeScript.',tags:['typescript'],links:[['Repositório',GH+'WillCoder01']]},
+ {title:'Reprografia SET/26 (EM e CIAs)',area:'Trabalho / PM',status:'done',desc:'Planilha corrigida com NF (pasta Documentos).',tags:['documento']},
+ {title:'Painel Vivo',area:'Sites & Apps',status:'doing',desc:'Este painel! Publicar no GitHub.',tags:['javascript'],links:[]},
+ {title:'Ativar GitHub Pages do site de presentes',area:'Sites & Apps',status:'todo',desc:'Settings → Pages → branch main.',tags:['tarefa']},
+ {title:'GitHub (perfil)',area:'Links úteis',status:'done',desc:'Todos os repositórios.',links:[['Perfil',GH.slice(0,-1)]]},
+];
+const KEY='painelVivo.v1';
+let items; try{items=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!Array.isArray(items)) items=SEED.map((x,i)=>({id:i+1,links:[],tags:[],...x}));
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){}render()};
+const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const col=s=>getComputedStyle(document.documentElement).getPropertyValue(ST[s].c).trim();
+
+function filtered(){const q=$('#q').value.toLowerCase(),a=$('#fArea').value;
+ return items.filter(i=>(!a||i.area===a)&&(!q||JSON.stringify(i).toLowerCase().includes(q)))}
+const areas=()=>[...new Set(items.map(i=>i.area))].sort();
+
+function render(){
+ const A=areas(),cur=$('#fArea').value;
+ $('#fArea').innerHTML='<option value="">Todas as áreas</option>'+A.map(a=>`<option ${a===cur?'selected':''}>${esc(a)}</option>`).join('');
+ $('#areas').innerHTML=A.map(a=>`<option value="${esc(a)}">`).join('');
+ const L=filtered(),nl=items.reduce((n,i)=>n+(i.links||[]).length,0);
+ $('#stats').innerHTML=Object.entries(ST).map(([k,v])=>`<div class="stat" style="border-top:3px solid var(${v.c})"><b>${items.filter(i=>i.status===k).length}</b><small>${v.n}</small></div>`).join('')+`<div class="stat"><b>${nl}</b><small>🔗 Links</small></div>`;
+ renderTree(L);renderKanban(L);renderLinks(L);
+}
+function card(i){return `<div class="item" style="--c:var(${ST[i.status].c})" onclick="edit(${i.id})"><div class="t">${esc(i.title)}</div>${i.desc?`<div class="d">${esc(i.desc)}</div>`:''}
+ <div class="links">${(i.links||[]).map(([n,u])=>`<a href="${esc(u)}" target="_blank" onclick="event.stopPropagation()">↗ ${esc(n)}</a>`).join('')}</div>
+ <div class="tags"><span class="tag">${esc(i.area)}</span>${(i.tags||[]).map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div></div>`}
+function renderKanban(L){$('#kanban').innerHTML=Object.entries(ST).map(([k,v])=>{const c=L.filter(i=>i.status===k);
+ return `<div class="col"><h3>${v.n}<span class="sub">${c.length}</span></h3>${c.map(card).join('')||'<p class="sub">Nada aqui</p>'}</div>`}).join('')}
+function renderLinks(L){const g={};L.forEach(i=>(i.links||[]).forEach(([n,u])=>(g[i.area]=g[i.area]||[]).push([i,n,u])));
+ $('#linkList').innerHTML=Object.keys(g).sort().map(a=>`<div class="lgroup"><h3>${esc(a)}</h3>${g[a].map(([i,n,u])=>`<div class="lrow"><span>${esc(i.title)} · <span class="sub">${esc(n)}</span></span><a href="${esc(u)}" target="_blank">${esc(u.replace(/^https?:\/\//,''))}</a></div>`).join('')}</div>`).join('')||'<p class="sub">Nenhum link encontrado.</p>'}
+
+function renderTree(L){
+ const A=[...new Set(L.map(i=>i.area))].sort();
+ const leafH=44,gap=26;let y=30;const rows=[];
+ A.forEach(a=>{const ch=L.filter(i=>i.area===a);rows.push({a,ch,y0:y});y+=Math.max(1,ch.length)*leafH+gap});
+ const H=Math.max(y,200),W=1000,rx=70,ry=H/2,ax=330,lx=560;
+ let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">`;
+ s+=`<text x="${rx-40}" y="${ry-40}" font-size="40">🌳</text>`;
+ rows.forEach(r=>{const ay=r.y0+(Math.max(1,r.ch.length)*leafH)/2-leafH/2+16;
+  s+=`<path class="branch" stroke="var(--acc)" d="M${rx+20},${ry} C${rx+150},${ry} ${ax-150},${ay} ${ax-10},${ay}"/>`;
+  r.ch.forEach((i,k)=>{const ly=r.y0+k*leafH+16;
+   s+=`<path class="branch" stroke="${col(i.status)}" d="M${ax+170},${ay} C${ax+220},${ay} ${lx-60},${ly} ${lx},${ly}"/>`;
+   const t=i.title.length>40?i.title.slice(0,39)+'…':i.title;
+   s+=`<g class="node" onclick="edit(${i.id})"><rect x="${lx}" y="${ly-15}" width="400" height="30" style="stroke:${col(i.status)}"/><circle cx="${lx+16}" cy="${ly}" r="6" fill="${col(i.status)}"/><text x="${lx+30}" y="${ly+5}">${esc(t)}</text>${(i.links||[]).length?`<text x="${lx+380}" y="${ly+5}" fill="var(--mut)" text-anchor="end">🔗${i.links.length}</text>`:''}</g>`});
+  s+=`<g class="node" onclick="$('#fArea').value=${esc(JSON.stringify(r.a))};render()"><rect x="${ax-10}" y="${ay-17}" width="180" height="34" style="fill:var(--acc);stroke:none"/><text x="${ax+80}" y="${ay+5}" text-anchor="middle" style="fill:#04120a;font-weight:700">${esc(r.a)}</text></g>`});
+ $('#tree').innerHTML=s+'</svg>'+(L.length?'':'<p class="sub" style="padding:20px">Nada encontrado.</p>');
+}
+
+let editing=null;
+window.edit=id=>{editing=items.find(i=>i.id===id)||null;const f=$('#frm'),i=editing||{status:'todo',area:$('#fArea').value||'',links:[],tags:[]};
+ $('#dlgT').textContent=editing?'Editar':'Novo item';$('#del').style.display=editing?'':'none';
+ f.title.value=i.title||'';f.desc.value=i.desc||'';f.area.value=i.area;f.status.value=i.status;
+ f.links.value=(i.links||[]).map(l=>l.join(' | ')).join('\n');f.tags.value=(i.tags||[]).join(', ');$('#dlg').showModal()};
+$('#dlg').addEventListener('close',()=>{if($('#dlg').returnValue!=='ok')return;const f=$('#frm');
+ const d={title:f.title.value.trim(),desc:f.desc.value.trim(),area:f.area.value.trim(),status:f.status.value,
+  links:f.links.value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split('|').map(x=>x.trim());return p.length>1?[p[0],p[1]]:['Link',p[0]]}),
+  tags:f.tags.value.split(',').map(t=>t.trim()).filter(Boolean)};
+ if(editing)Object.assign(editing,d);else items.push({id:Math.max(0,...items.map(i=>i.id))+1,...d});save()});
+$('#del').onclick=()=>{if(editing&&confirm('Excluir "'+editing.title+'"?')){items=items.filter(i=>i!==editing);$('#dlg').close();save()}};
+$('#add').onclick=()=>edit(-1);
+document.querySelectorAll('nav [data-v]').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav [data-v]').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v))});
+$('#q').oninput=render;$('#fArea').onchange=render;
+$('#theme').onclick=()=>{const r=document.documentElement,t=r.dataset.theme==='light'?'dark':'light';r.dataset.theme=t;try{localStorage.setItem(KEY+'.theme',t)}catch(e){}render()};
+try{const t=localStorage.getItem(KEY+'.theme');if(t)document.documentElement.dataset.theme=t}catch(e){}
+$('#exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));a.download='painel-vivo-backup.json';a.click()};
+$('#imp').onchange=e=>{const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(Array.isArray(d)){items=d;save()}}catch(x){alert('Arquivo inválido')}};r.readAsText(e.target.files[0])};
+render();
+</script>
+</body>
+</html>
